@@ -1,0 +1,47 @@
+# Renode board config consumed by the `zephyr-virtual-board` module.
+#
+# Paths are relative to THIS file (overlay / photo / layout) or to the build
+# directory (elf / dts; see `west zvb-* --build-dir`, default `build`). The
+# platform .repl is regenerated from the devicetree into the build dir on every
+# run, so it lives nowhere here. Used by: west zvb-web | zvb-run | zvb-debug | zvb-repl.
+
+title: "Power Domain PM"       # dashboard title / page heading
+machine: u5a5                  # Renode `mach create` instance name
+console_uart: usart1           # console: socket terminal (web) / showAnalyzer (run)
+cpu: cpu0                      # CPU object for the WFI (low-power) hook
+
+elf: zephyr/zephyr.elf         # rel. to build dir -- loaded into the machine + GDB symbols
+dts: zephyr/zephyr.dts         # rel. to build dir -- input to dts2repl
+clock_hz: 160000000            # dts2repl --override-system-clock-frequency (NVIC SysTick)
+
+overlay: overlay.repl          # additive .repl on top of the generated platform
+                               #   (USER button PC13 + STM32U5 EXTI; dts2repl models neither)
+
+# Board-specific Renode monitor tags -- workarounds for peripherals Renode 1.16.1
+# doesn't model. Here: force the STM32U5 ICACHE_SR busy flag to 0 so Zephyr's
+# cache_instr_enable() doesn't spin forever at boot.
+tags:
+  - {address: "0x40030404", size: "0x4", name: ICACHE_SR, value: "0x0"}
+
+photo: board.png               # board image behind the LED/button overlays
+gdb_port: 3333
+
+# Overlay marker positions on board.png (percent of image: x, y, rotation°, scale).
+# Drag them in the dashboard's "Edit overlay positions" mode, which prints an
+# updated block to paste back here (JSON is valid YAML).
+layout:
+  leds:
+    red:   {x: 46.3, y: 26, rot: -90, scale: 0.75}
+    green: {x: 49.3, y: 26, rot: -90, scale: 0.75}
+    blue:  {x: 53,   y: 26, rot: -90, scale: 0.75}
+  button: {x: 21.6, y: 91.6, rot: -38, scale: 0.6}
+
+# LEDs to mirror. `object` is seeded once for initial state; `port`/`pin` get a
+# GPIO state-changed hook that pushes live changes. color/label are cosmetic.
+leds:
+  - {name: red,   object: gpiog.redled1,   port: gpiog, pin: 2, color: "#ff3b30", label: "LD3 red · PG2"}
+  - {name: green, object: gpioc.greenled1, port: gpioc, pin: 7, color: "#34c759", label: "LD1 green · PC7"}
+  - {name: blue,  object: gpiob.blueled1,  port: gpiob, pin: 7, color: "#0a84ff", label: "LD2 blue · PB7"}
+
+# Clickable button: routed to Renode as `<object> Press`/`Release` over the monitor.
+button: {object: gpioc.userButton, label: "USER · PC13"}

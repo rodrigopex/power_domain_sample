@@ -1,0 +1,21 @@
+// USER button (PC13, the blue button) for the web front-end.
+// Loaded additively on top of nucleo_u5a5zj_q.repl (which defines gpioc);
+// kept separate because dts2repl regenerates nucleo_u5a5zj_q.repl.
+userButton: Miscellaneous.Button @ gpioc 13
+    -> gpioc@13
+
+// dts2repl does NOT model the STM32U5 EXTI, so GPIO interrupts never reach the
+// CPU (the firmware's button callback never fires). Add it and route the button
+// line through EXTI to the NVIC. STM32U5 EXTI is the modern "g0-style" layout
+// (RTSR1/FTSR1/EXTICR/IMR1), which STM32WBA_EXTI matches: line N -> IRQ 11+N
+// (zephyr.dts: interrupts 0xb..0x1a for line0..15) and num-lines = 0x20 = 32.
+exti: IRQControllers.STM32WBA_EXTI @ sysbus 0x46022000
+    numberOfOutputLines: 32
+    [0-15] -> nvic0@[11-26]
+
+// Route the USER-button line (PC13) into EXTI. STM32 EXTICR muxes each line to a
+// port; the EXTI exposes one input GPIO group per port (A=#0, B=#1, C=#2, ...),
+// matching Renode's own stm32wba52.repl. EXTICR13 = port C, so gpioc line 13
+// must feed group #2. Only line 13 is wired, leaving PC7 (green LED) untouched.
+gpioc:
+    13 -> exti#2@13

@@ -1,0 +1,32 @@
+manifest:
+        remotes:
+                - name: zephyrproject-rtos
+                  url-base: https://github.com/zephyrproject-rtos
+
+        projects:
+                - name: zview
+                  url: https://github.com/wkhadgar/zview
+                  revision: v0.13.0
+                  path: modules/tools/zview
+                  west-commands: scripts/west-commands.yml
+                - name: zbook
+                  url: https://github.com/zephyr-book/zbook
+                  revision: main
+                # Local Renode tooling module (web dashboard / GDB debug / run /
+                # repl regen) exposing the `west zvb-*` commands. Developed
+                # in-tree; the dir already exists, so don't `west update` this
+                # project until it is published at the URL below.
+                - name: zephyr-virtual-board
+                  url: https://github.com/OWNER/zephyr-virtual-board
+                  revision: main
+                  path: modules/tools/zephyr-virtual-board
+                  west-commands: scripts/west-commands.yml
+                - name: zephyr
+                  url: https://github.com/rodrigopex/zephyr/
+                  revision: 93f320d1d6d061f4eda1b74bbbd6891f36a36fb8
+                  clone-depth: 1
+                  import:
+                          # By using name-allowlist we clone only required modules
+                          name-allowlist:
+                                  - cmsis_6 # ARM CMSIS (required by soc/arm/mps2/soc.h)
+                                  - hal_stm32

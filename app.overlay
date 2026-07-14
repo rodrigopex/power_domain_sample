@@ -1,0 +1,106 @@
+/*
+ * Copyright (c) 2026 Rodrigo Peixoto
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+
+        power-states {
+		state0: state0 {
+			compatible = "zephyr,power-state";
+			power-state-name = "runtime-idle";
+			min-residency-us = <10000>;
+			exit-latency-us = <100>;
+		};
+
+		state1: state1 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <500000>;
+			exit-latency-us = <500>;
+		};
+		state2: state2 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1500000>;
+			exit-latency-us = <1000>;
+		};
+
+		standby: standby {
+			compatible = "zephyr,power-state";
+			power-state-name = "standby";
+			min-residency-us = <10000000>;
+			exit-latency-us = <1000>;
+		};
+	};
+        /* The ../zephyr/dts/arm/st/u5/stm32u5.dtsi declares the power states */
+        mcu_usb_usage_power_domain: mcu_usb_usage_power_domain {
+                compatible = "power-domain-soc-state-change";
+		status = "okay";
+		#power-domain-cells = <0>;
+		onoff-power-states = <&standby>;
+	};
+
+	regulator_power_domain_3v3: reg_3v3 {
+		compatible = "power-domain-gpio";
+		enable-gpios = <&gpioc 7 GPIO_ACTIVE_HIGH>; /* LED1 */
+		status = "okay";
+		#power-domain-cells = <0>;
+		power-domains = <&mcu_usb_usage_power_domain>;
+		zephyr,pm-device-runtime-auto;
+	};
+
+	regulator_power_domain_1v8: reg_1v8 {
+	        compatible = "power-domain-gpio";
+	        enable-gpios = <&gpiob 7 GPIO_ACTIVE_HIGH>; /* LED2 */
+	        status = "okay";
+		#power-domain-cells = <0>;
+		zephyr,pm-device-runtime-auto;
+	};
+
+	wifi0: wifi_device {
+		compatible = "example,pm-device";
+                status = "okay";
+		power-domains = <&regulator_power_domain_1v8 &regulator_power_domain_3v3>;
+		label = "WiFi device";
+		zephyr,pm-device-runtime-auto;
+	};
+	gnss0: gnss_device {
+		compatible = "example,pm-device";
+                status = "okay";
+		power-domains = <&regulator_power_domain_1v8>;
+		label = "GNSS device";
+		zephyr,pm-device-runtime-auto;
+	};
+
+	proximity0: proximity_device {
+		compatible = "example,pm-device";
+                status = "okay";
+		power-domains = <&regulator_power_domain_3v3>;
+		label = "Proximity device";
+		zephyr,pm-device-runtime-auto;
+	};
+
+	mcu_vusb: vusb_device {
+		compatible = "example,pm-device";
+                status = "okay";
+		power-domains = <&regulator_power_domain_3v3>;
+		label = "VUSB device";
+		zephyr,pm-device-runtime-auto;
+	};
+};
+
+/*
+ * Board overlay applied ONLY for nucleo_u5a5zj_q (the Renode-emulated board).
+ *
+ * Renode 1.16.1 models neither the STM32U5 Stop-mode wake timers (LPTIM/RTC)
+ * nor Stop-mode SysTick gating. Once Zephyr's PM idle enters a Stop state the
+ * kernel tick halts and the emulator freezes (k_sleep never returns). Drop the
+ * CPU power-states so the idle stays in plain WFI -- SysTick keeps running and
+ * time advances under emulation. Device power-domains (the point of the study)
+ * are unaffected; hardware builds (e.g. stm32u5g9j_dk2) keep full CONFIG_PM.
+ */
+
+&cpu0 {
+	/delete-property/ cpu-power-states;
+};
